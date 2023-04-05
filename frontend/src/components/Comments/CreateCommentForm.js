@@ -1,14 +1,14 @@
 import "./Comments.css"
 import { useState } from "react"
 import { useDispatch, useSelector } from "react-redux"
-import { createComment } from "../../store/comments";
+import {createComment, fetchComments} from "../../store/comments";
 import { useParams } from "react-router-dom";
 
 
-function CreateCommentForm() {
+function CreateCommentForm({postId}) {
     const dispatch = useDispatch();
     const sessionUser = useSelector(state => state.session.user);
-    const {postId} = useParams();
+    // const {postId} = useParams();
     const [body, setBody] = useState("");
     const [errors, setErrors] = useState([]);
 
@@ -18,11 +18,12 @@ function CreateCommentForm() {
             setErrors(["Must fill out all fields"]);
         } else {
             let newComment = {
-                author_id: sessionUser.id,
                 post_id: postId,
                 body: body
             }
             dispatch(createComment(newComment))
+            dispatch(fetchComments(postId))
+            setBody("")
         }
     }
 
@@ -34,7 +35,7 @@ function CreateCommentForm() {
                     {errors.map(error => <li key={error} className="error-messages">{error}</li>)}
                 </ul>
 
-                <label>Body
+                <label>Comment&nbsp;&nbsp;
                     <input type="textarea" value={body} onChange={(e) => {setBody(e.target.value)}} ></input>
                 </label>
 

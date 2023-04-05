@@ -18,18 +18,7 @@ AWS.config.update({
 
 const s3 = new AWS.S3()
 
-/* GET posts listing. */
-router.get('/', async (req, res) => {
-  try {
-    const posts = await Post.find().populate("author", "_id username").sort({ "like.length": -1 });
-    return res.json(posts);
-  }
-  catch(err) {
-    return res.json([]);
-  }
-})
-
-const allowedExtensions = ['.png', '.PNG','.jpg', '.jpeg', '.bmp', '.mov', '.MOV']
+const allowedExtensions = ['.png', '.PNG','.jpg', '.jpeg', '.bmp', '.mov', '.MOV', '.JPEG', '.JPG']
 const imageUploader = multer({
   storage: multerS3({
     s3: s3,
@@ -49,7 +38,137 @@ const imageUploader = multer({
 // GET all posts listing.
 router.get('/', async (req, res) => {
   try {
-    const posts = await Post.find().populate("author", "_id username").sort({ "likes.length": -1 });
+    const posts = await Post.find().populate("author").sort({ "likes.length": -1 });
+    return res.json(posts);
+  }
+  catch(err) {
+    return res.json([]);
+  }
+});
+
+// router.get('/likes',async (req, res, next) => {
+//   try {
+//     const post = await Post.aggregate([
+//       // Select the `area` and `likes` fields, and populate the `author` field.
+//       {
+//         $project: {
+//           area: 1,
+//           likes: 1,
+//           author: 1,
+//         },
+//       },
+//       {
+//         $lookup: {
+//           from: 'users',
+//           localField: 'author',
+//           foreignField: '_id',
+//           as: 'author',
+//         },
+//       },
+//       {
+//         $unwind: '$author',
+//       },
+//       // Group by `area`.
+//       {
+//         $group: {
+//           _id: '$area',
+//           // Sort the `likes` field in descending order.
+//           max_likes: {
+//             $max: '$likes',
+//           },
+//           // Select the first document in each group.
+//           doc: {
+//             $first: '$$ROOT',
+//           },
+//         },
+//       },
+//       // Select the `author` field from the selected document.
+//       {
+//         $project: {
+//           _id: 0,
+//           area: '$_id',
+//           author: '$doc.author',
+//         },
+//       },
+//     ]);
+
+//     return res.json(post);
+//   }
+//   catch(err) {
+//     const error = new Error('Post not found');
+//     error.statusCode = 404;
+//     error.errors = { message: "No post found with that id" };
+//     return next(error);
+//   }
+// });
+
+router.get('/likes',async (req, res, next) => {
+  try {
+    const posts = await Post.aggregate([
+      // Select the `area` and `likes` fields, and populate the `author` field.
+      {
+        $project: {
+          area: 1,
+          likes: 1,
+          author: 1,
+        },
+      },
+      {
+        $lookup: {
+          from: 'users',
+          localField: 'author',
+          foreignField: '_id',
+          as: 'author',
+        },
+      },
+      {
+        $unwind: '$author',
+      },
+      // Group by `area`.
+      {
+        $group: {
+          _id: '$area',
+          // Get the maximum `likes` array field length in each group.
+          max_likes: { $max: { $size: '$likes' } },
+          // Sort the documents within each group by the `likes` array field length in descending order.
+          docs: { $push: { doc: '$$ROOT', likesCount: { $size: '$likes' } } },
+        }
+      },
+      {
+        $project: {
+          _id: 0,
+          area: '$_id',
+          // Get the first document in the sorted list of documents in each group.
+          author: { $arrayElemAt: ['$docs.doc.author', { $indexOfArray: ['$docs.likesCount', '$max_likes'] }] }
+        }
+      },
+    ]);
+
+    return res.json(posts);
+  }
+  catch(err) {
+    const error = new Error('Post not found');
+    error.statusCode = 404;
+    error.errors = { message: "No post found with that id" };
+    return next(error);
+  }
+});
+
+// GET posts that belongs to a specific user.
+router.get('/user', requireUser, async (req, res, next) => {
+  let user;
+  try {
+    user = await User.findById(req.user._id);
+  } catch(err) {
+    const error = new Error('User not found');
+    error.statusCode = 404;
+    error.errors = { message: "No user found with that id" };
+    return next(error);
+  }
+  try {
+    const posts = await Post.find({ author: user._id })
+        .sort({ "likes.length": -1 })
+        .populate("author");
     return res.json(posts);
   }
   catch(err) {
@@ -60,7 +179,7 @@ router.get('/', async (req, res) => {
 // GET a single post with it's id.
 router.get('/:id', async (req, res, next) => {
   try {
-    const post = await Post.findById(req.params.id).populate("author", "_id username");
+    const post = await Post.findById(req.params.id).populate("author");
     return res.json(post);
   }
   catch(err) {
@@ -71,34 +190,35 @@ router.get('/:id', async (req, res, next) => {
   }
 });
 
-
-// GET posts that belongs to a specific user.
-router.get('/user/:userId', requireUser, async (req, res, next) => {
-  let user;
-  try {
-    user = await User.findById(req.params.userId);
-  } catch(err) {
-    const error = new Error('User not found');
-    error.statusCode = 404;
-    error.errors = { message: "No user found with that id" };
-    return next(error);
-  }
-  try {
-    const posts = await Post.find({ author: user._id })
-                              .sort({ "like.length": -1 })
-                              .populate("author", "_id username");
-    return res.json(posts);
-  }
-  catch(err) {
-    return res.json([]);
-  }
-});
 
 // GET posts that belongs to a specific area.
+// router.get('/area/:areaId', async (req, res, next) => {
+//   try {
+//     const posts = await Post.find({ area: req.params.areaId}).populate("author").sort({ "likes.length": -1 });
+//     return res.json(posts);
+//   }
+//   catch(err) {
+//     const error = new Error('Post not found');
+//     error.statusCode = 404;
+//     error.errors = { message: "No post found with that id" };
+//     return next(error);
+//   }
+// })
 router.get('/area/:areaId', async (req, res, next) => {
   try {
-    const post = await Post.find({ area: req.params.areaId}).populate("author", "_id username");
-    return res.json(post);
+    const posts = await Post.find({ area: req.params.areaId })
+      .populate("author")
+      .lean()
+      .exec();
+
+    const postsWithLikesCount = posts.map(post => ({
+      ...post,
+      likes_count: post.likes ? post.likes.length : 0
+    }));
+
+    const sortedPosts = postsWithLikesCount.sort((a, b) => b.likes_count - a.likes_count);
+
+    return res.json(sortedPosts);
   }
   catch(err) {
     const error = new Error('Post not found');
@@ -106,36 +226,24 @@ router.get('/area/:areaId', async (req, res, next) => {
     error.errors = { message: "No post found with that id" };
     return next(error);
   }
-})
+});
 
-router.delete('/:id', requireUser, async (req, res, next) => {
-  const post = await Post.findById(req.params.id)
-  if (post && post.author._id.toString() == req.user._id ) {
-    post.deleteOne();
-  } else {
-    console.log("No permissions")
-    return res.json({result:false});
-  }
-  return res.json({result:true});
-})
 
-// Attach requireUser as a middleware before the route handler to gain access
-// to req.user. (requireUser will return an error response if there is no 
-// current user.) Also attach validatePostInput as a middleware before the 
-// route handler.
+
 
 // Create a new post.
 router.post('/', requireUser, validatePostInput, imageUploader.single('image'), async (req, res, next) => {
   try {
     const newPost = new Post({
-      url: req.file?.location,
+      url: req.file.location,
       area: req.body.area,
       author: req.user._id,
       content: req.body.content,
+      likes: []
     });
 
     let post = await newPost.save();
-    post = await post.populate('author', '_id username');
+    post = await post.populate('author');
     return res.json(post);
   }
   catch(err) {
@@ -146,7 +254,7 @@ router.post('/', requireUser, validatePostInput, imageUploader.single('image'), 
 // Add like to a post
 router.post('/:id/likes', requireUser, async (req, res, next) => {
   try {
-    const post = await Post.findById(req.params.id).populate("author", "_id username");
+    const post = await Post.findById(req.params.id).populate("author");
     const user_id = req.user._id;
 
     if (post.likes.includes(user_id)) {
@@ -167,11 +275,11 @@ router.post('/:id/likes', requireUser, async (req, res, next) => {
 
 // Update post.
 router.put('/:id', requireUser, validatePostInput, async (req, res, next) => {
-  const { area, content } = req.body;
+  const content = req.body.content;
   const { id } = req.params;
 
   try {
-    const post = await Post.findById(id).populate("author", "_id username");
+    const post = await Post.findById(id).populate("author");
 
     if (!post) {
       const err = new Error('Post not found');
@@ -180,18 +288,26 @@ router.put('/:id', requireUser, validatePostInput, async (req, res, next) => {
       return next(err);
     }
 
-    if (post.author._id.toString() !== req.user._id) {
+    if (post.author._id.toString() !== req.user._id.toString()) {
       const err = new Error('Unauthorized');
       err.statusCode = 401;
       err.errors = { message: "You are not authorized to update this post" };
       return next(err);
     }
 
-    post.area = area;
+    // post.area = area;
     post.content = content;
 
     const updatedPost = await post.save();
-    return res.json(updatedPost);
+    // return res.json(updatedPost);
+    return res.json({
+      _id: updatedPost._id,
+      author: updatedPost.author,
+      url: updatedPost.url,
+      likes: updatedPost.likes,
+      area: updatedPost.area,
+      content: updatedPost.content
+    });
   }
   catch(err) {
     next(err);
@@ -200,15 +316,29 @@ router.put('/:id', requireUser, validatePostInput, async (req, res, next) => {
 
 // DELETE post.
 router.delete('/:id', requireUser, async (req, res, next) => {
-  const post = await Post.findById(req.params.id)
-  if (post && post.author._id.toString() === req.user._id ) {
-    post.deleteOne();
-  } else {
-    console.log("No permissions")
-    return res.json({result:false});
+  try {
+    const post = await Post.findById(req.params.id);
+
+    if (post && post.author._id.toString() === req.user._id.toString()) {
+      console.log("Delete successful");
+      post.deleteOne();
+      return res.json({ result: true });
+    } else {
+      console.log("No permissions")
+      const error = new Error('Unauthorized');
+      error.statusCode = 401;
+      error.errors = { message: "You are not authorized to delete this post" };
+      return next(error);
+    }
+  } catch (err) {
+    console.error(err);
+    const error = new Error('Server error');
+    error.statusCode = 500;
+    error.errors = { message: "There was a problem deleting the post" };
+    return next(error);
   }
-  return res.json({result:true});
 });
+
 
 
 module.exports = router;

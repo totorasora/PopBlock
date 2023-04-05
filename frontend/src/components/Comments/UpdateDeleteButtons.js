@@ -4,29 +4,35 @@ import { Modal } from "../../context/Modal";
 import { useState } from "react";
 import UpdateCommentForm from "./UpdateCommentForm";
 import DeleteCommentForm from "./DeleteCommentForm";
+import TrashButton from "../../assets/images/trash2.svg"
+import EditButton from "../../assets/images/edit2.svg"
 
 
-function UpdateDeleteButtons ({comment}) {
+function UpdateDeleteButtons ({comment, postId}) {
     const sessionUser = useSelector(state => state.session.user)
     const [deleteModalShow, setDeleteModalShow] = useState(false);
     const [updateModalShow, setUpdateShowModal] = useState(false);
     if (!sessionUser) return
-    if (comment.authorId !== sessionUser.id) return
+    if (comment.author._id !== sessionUser._id) return
 
 
     return (
-        <div>
-            <button onClick={() => setDeleteModalShow(true)}>Delete</button>
+        <div className="update-delete-buttons-container">
+            <button className='update-delete-buttons' onClick={() => setDeleteModalShow(true)}>
+                <img className="icon" src={TrashButton}/>
+            </button>
             {deleteModalShow && (
                 <Modal onClose={() => setDeleteModalShow(false)}>
-                    <DeleteCommentForm comment={comment} setDeleteModalShow={setDeleteModalShow}/>
+                    <DeleteCommentForm comment={comment} setDeleteModalShow={setDeleteModalShow} postId={postId}/>
                 </Modal>
                 )}
 
-            <button onClick={() => setUpdateShowModal(true)}>Update</button>
+            <button className='update-delete-buttons' onClick={() => setUpdateShowModal(true)}>
+                <img className="icon" src={EditButton}/>
+            </button>
             {updateModalShow && (
                 <Modal onClose={() => setUpdateShowModal(false)}>
-                    <UpdateCommentForm comment={comment} setUpdateShowModal={setUpdateShowModal}/>
+                    <UpdateCommentForm comment={comment} setUpdateShowModal={setUpdateShowModal} postId={postId}/>
                 </Modal>
                 )}
         </div>

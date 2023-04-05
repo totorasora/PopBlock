@@ -42,6 +42,7 @@ q:before, q:after {
 	content: '';
 	content: none;
 }
+
 table {
 	border-collapse: collapse;
 	border-spacing: 0;
@@ -49,10 +50,19 @@ table {
 
 * {
 	font-family: Arial, Helvetica, sans-serif;
+	/* font-size: 10px; */
+}
+
+#root {
+	font-family: Arial, Helvetica, sans-serif;
 }
 
 
 .map-container {
-	height: 600px;
-	width: 1000px;
+	height: 100vh;
+	width: 100vw;
 	}
+
+.background {
+	background-color: #f2f2f2;	
+}

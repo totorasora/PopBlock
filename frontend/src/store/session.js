@@ -27,8 +27,8 @@ export const clearSessionErrors = () => ({
     type: CLEAR_SESSION_ERRORS
 });
 
-export const signup = user => startSession(user, 'api/users/register');
-export const login = user => startSession(user, 'api/users/login');
+export const signup = user => startSession(user, '/api/users/register');
+export const login = user => startSession(user, '/api/users/login');
 
 const startSession = (userInfo, route) => async dispatch => {
     try {
@@ -38,7 +38,8 @@ const startSession = (userInfo, route) => async dispatch => {
         });
         const { user, token } = await res.json();
         localStorage.setItem('jwtToken', token);
-        return dispatch(receiveCurrentUser(user));
+
+        return dispatch(receiveCurrentUser({user: user}));
     } catch(err) {
         const res = await err.json();
         if (res.statusCode === 400) {
@@ -65,7 +66,7 @@ const initialState = {
 const sessionReducer = (state = initialState, action) => {
     switch (action.type) {
         case RECEIVE_CURRENT_USER:
-            return { user: action.currentUser };
+            return { ...action.currentUser };
         case RECEIVE_USER_LOGOUT:
             return initialState;
         default:

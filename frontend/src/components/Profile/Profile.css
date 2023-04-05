@@ -1,0 +1,23 @@
+.profile {
+    padding-top: 150px;
+    max-width: 1024px;
+    margin: 0 auto;
+    text-align: center;
+    display: flex;
+    justify-content: center;
+  }
+  
+  .profile-heading {
+    font-size: 30px;
+    font-weight: bold;
+    text-decoration: none;
+    margin: 10px 0;
+    color: #111;
+    text-transform: uppercase;
+    letter-spacing: 2px;
+  }
+  
+.showpage {
+    padding-top: 10px !important;   
+}
+

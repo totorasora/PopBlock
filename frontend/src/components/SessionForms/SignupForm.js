@@ -1,15 +1,13 @@
-import { useState } from "react";
-import { useSelector, useDispatch } from "react-redux";
-import { Redirect } from "react-router-dom";
-import { showLoginModal } from "../../store/ui";
+import {useState} from "react";
+import {useDispatch, useSelector} from "react-redux";
+import {Redirect} from "react-router-dom";
+import {showLoginModal} from "../../store/ui";
 import * as sessionActions from "../../store/session";
-import { Modal } from "../../context/Modal";
-import './SessionForms.css'
-
+import sessionImg from '../../assets/images/popblockmap.png'
+import logo from '../../assets/images/logo.png'
+import "./SessionForms.css"
 
 //need to import sessionActions from store/session
-
-
 function SignupForm() {
     const dispatch = useDispatch();
     const sessionUser = useSelector(state => state.session.user);
@@ -22,79 +20,86 @@ function SignupForm() {
 
     if (sessionUser) return <Redirect to="/" />;
 
-    const handleSubmit = (e) => {
+    const handleSubmit = async (e) => {
         e.preventDefault();
         if (password === confirmPassword) {
-        setErrors([]);
-        return dispatch(sessionActions.signup({ username, password }))
-            .catch(async (res) => {
-            let data;
-            try {
-                data = await res.clone().json();
-            } catch {
-                data = await res.text();
-            }
-            if (data?.errors) setErrors(data.errors);
-            else if (data) setErrors([data]);
-            else setErrors([res.statusText]);
-        });
+          setErrors([]);
+          try {
+            const data = await dispatch(sessionActions.signup({ username, password }));
+            // console.log("data", data);
+            // console.log("data errors", data.errors);
+            setErrors(Object.values(data.errors));
+            // console.log("Errors", errors);
+            return data;
+          } catch (err) {
+            // console.log("Error", err);
+            return setErrors(["An error occurred while signing up"]);
+          }
         }
-        return setErrors(['Confirm Password field must be the same as the Password field']);
-    };
-
+        return setErrors(["Confirm Password field must be the same as the Password field"]);
+      };      
 
     return (
-            <>
-        <form onSubmit={handleSubmit}>
-            <ul>
-                {errors.map(error=> <li key={error}>{error}</li>)}
-            </ul>
+        <>
+        <div className="modal-container">
+            <div className="left-container">
+                <div className="pb-logo-container"><img className="logo1" src={logo}/></div>
+                <div className='under-logo-text'>Take over your city!</div>
+                <img src={sessionImg} className="sessionImg" alt="img"/>
+            </div>
+            <div className="right-container">
+                <form onSubmit={handleSubmit}>
 
-            <h2 className="modal-CTA-header">Make an account</h2>
+                    <h2 className="modal-CTA-header">Welcome to PopBlock</h2>
+                    <p className="modal-CTA-subtext">Create an account.</p>
+                    {errors.length > 0 && (
+                        <ul className="error-messages">
+                            {errors.map(error => <li key={error}>{error}</li>)}
+                        </ul>
+                        )}
 
-            <br/>
+                    <br/>
 
-            <label>
-                <input className="form-field"
-                placeholder='username'
-                type='username'
-                value={username}
-                onChange={(e) => setUsername(e.target.value)}
-                required/>
-            </label>
+                    <label>
+                        <input className="form-field"
+                        placeholder='Username'
+                        type='username'
+                        value={username}
+                        onChange={(e) => setUsername(e.target.value)}
+                        required/>
+                    </label>
 
-            <br/>
+                    <br/>
 
-            <label>
-                <input className="form-field"
-                placeholder='Password'
-                type='password'
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                required/>
-            </label>
+                    <label>
+                        <input className="form-field"
+                            placeholder='Password'
+                            type='password'
+                            value={password}
+                            onChange={(e) => setPassword(e.target.value)}
+                            required/>
+                    </label>
 
-            <br/>
+                    <br/>
 
-            <label>
-            <input className="form-field"
-                placeholder='Confirm password'
-                type="password"
-                value={confirmPassword}
-                onChange={(e) => setConfirmPassword(e.target.value)}
-                required/>
-            </label>
+                    <label>
+                        <input className="form-field"
+                            placeholder='Confirm password'
+                            type="password"
+                            value={confirmPassword}
+                            onChange={(e) => setConfirmPassword(e.target.value)}
+                            required/>
+                    </label>
 
-            <br/>
+                    <br/>
 
-            <button className="modal-button" type='submit'>Sign up</button>
-        </form>
-
-
-        <div id="alternate-button-container">
-            <button className="alternate-button" onClick={()=> dispatch(showLoginModal())}>Log In</button>
+                    <button className="modal-button" type='submit'>Sign up</button>
+                </form>
+                <div id="alternate-button-container">
+                    <button className="alternate-button" onClick={()=> dispatch(showLoginModal())}>Log In</button>
+                </div>
+            </div>
         </div>
-
         </>
     );
     }

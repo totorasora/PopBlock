@@ -10,6 +10,7 @@ async function jwtFetch(url, options = {}) {
 
     // If the options.method is not 'GET', then set the "Content-Type" header to
     // "application/json".
+
     if (options.method.toUpperCase() !== "GET") {
         if (!options["fileUpload"]) {
             options.headers["Content-Type"] =
@@ -21,7 +22,7 @@ async function jwtFetch(url, options = {}) {
     // Call fetch with the url and the updated options hash.
     let res = {}
     try{
-         res = await fetch(url, options);
+        res = await fetch(url, options);
     }catch(e) {
         console.log(e)
     }

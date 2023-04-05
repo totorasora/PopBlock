@@ -1,4 +1,5 @@
 import jwtFetch from "./jwt";
+import {logoutUser} from "./session";
 
 export const RECEIVE_COMMENTS = "COMMENTS/RECEIVE"
 export const RECEIVE_COMMENT = "COMMENT/RECEIVE"
@@ -21,10 +22,10 @@ const receiveComment = (Comment) => (
     }
 );
 
-const removeComment = (payload) => (
+const removeComment = (comment) => (
     {
         type: REMOVE_COMMENT,
-        payload
+        comment
     }
 );
 
@@ -49,10 +50,12 @@ export const getComment = (commentId) => (state) => (
     state.comments ? state.comments[commentId] : null
 )
 
-
-export const fetchComments = id => async dispatch => {
+export const fetchComments = (postId) => async dispatch => {
     try {
-        const res = await jwtFetch(`/api/${id}`);
+        // console.log(postId)
+        const url = postId ? `/api/comments/post/${postId}` : `/api/comments/user`
+        // const url =  `/api/comments/post/${postId}`
+        const res = await jwtFetch(url);
         const comments = await res.json();
         dispatch(receiveComments(comments));
     } catch (err) {
@@ -65,13 +68,15 @@ export const fetchComments = id => async dispatch => {
 
 export const createComment = (commentData) => async dispatch => {
     try {
-        const res = await jwtFetch('/api/tweets/', {
+        const res = await jwtFetch(`/api/comments/${commentData.post_id}`, {
             method: 'POST',
             body: JSON.stringify(commentData)
         });
-        const comment = await res.json();
-        dispatch(receiveComment(comment));
+        dispatch(fetchComments(commentData.post_id))
     } catch(err) {
+        if (err.status == 401) {
+            dispatch(logoutUser());
+        }
         const resBody = await err.json();
         if (resBody.statusCode === 400) {
             return dispatch(receiveErrors(resBody.errors));
@@ -79,14 +84,15 @@ export const createComment = (commentData) => async dispatch => {
     }
 }
 
-export const updateComment = (commentData) => async dispatch => {
+export const updateComment = (commentData) => async dispatch =>
+{
     try {
-        const res = await jwtFetch('/api/tweets/', {
-            method: 'PATCH',
+        const res = await jwtFetch(`/api/comments/${commentData._id}`, {
+            method: 'PUT',
             body: JSON.stringify(commentData)
         });
-        const comment = await res.json();
-        dispatch(receiveComment(comment));
+        console.log(commentData.post_id)
+        dispatch(fetchComments(commentData.post_id))
     } catch(err) {
         const resBody = await err.json();
         if (resBody.statusCode === 400) {
@@ -95,32 +101,43 @@ export const updateComment = (commentData) => async dispatch => {
     }
 }
 
-export const deleteComment = (commentId) => async dispatch => {
-    const response = await jwtFetch(`/api/comments/${commentId}`, {
+export const deleteComment = (comment) => async dispatch => {
+    const response = await jwtFetch(`/api/comments/${comment._id}`, {
         method: "DELETE"
     });
     if (response.ok) {
-        dispatch(removeComment(commentId))
+        dispatch(removeComment(comment))
+        // dispatch(fetchComments(comment.post_id))
     }
 }
 
+
 export default function commentsReducer(oldState = {}, action) {
+    let newState = {...oldState}
     switch (action.type) {
+        case RECEIVE_COMMENTS:
+            let postComments = {}
+            for(let comment of action.comments) {
+                postComments[comment._id] = comment
+            }
+            return postComments
         case RECEIVE_COMMENT:
-            return action.comments
-        case RECEIVE_COMMENT:
-            return {...oldState, [action.comment.id] : action.comment}
+            // console.log(action.comment._id)
+            return { ...newState, [action.comment._id] : action.comment }
         case REMOVE_COMMENT:
-            let newState = {...oldState}
-            delete newState[action.payload]
+            delete newState[action.comment._id]
+            // console.log(action.comment._id)
+            // console.log(newState)
             return newState
+            // let newState = {...oldState}
+            // console.log(newState)
+            // return newState.filter(comment => comment._id !== action.comment._id)
         default:
             return oldState;
     }
 }
 
 const nullErrors = null;
-
 
 export const commentErrorsReducer = (state = nullErrors, action) => {
     switch(action.type) {
